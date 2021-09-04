@@ -3,14 +3,14 @@
 
 #include <ossia/dataflow/node_process.hpp>
 
-namespace MyProcess
+namespace Samplette
 {
 class Model;
 class ProcessExecutorComponent final
     : public Execution::
-          ProcessComponent_T<MyProcess::Model, ossia::node_process>
+          ProcessComponent_T<Samplette::Model, ossia::node_process>
 {
-  COMPONENT_METADATA("00000000-0000-0000-0000-000000000000")
+  COMPONENT_METADATA("67954c3b-10b7-42a0-9c07-579f2f6e85d6")
 public:
   ProcessExecutorComponent(
       Model& element,

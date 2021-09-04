@@ -1,17 +1,17 @@
 #pragma once
 #include <Process/ProcessMetadata.hpp>
 
-namespace MyProcess
+namespace Samplette
 {
 class Model;
 }
 
 PROCESS_METADATA(
     ,
-    MyProcess::Model,
-    "00000000-0000-0000-0000-000000000000",
-    "MyProcess",                                  // Internal name
-    "MyProcess",                                  // Pretty name
+    Samplette::Model,
+    "2d9ac779-4f76-4c62-b636-0df0aceb0847",
+    "Samplette",                                  // Internal name
+    "Samplette",                                  // Pretty name
     Process::ProcessCategory::Other,              // Category
     "Other",                                      // Category
     "Description",                                // Description

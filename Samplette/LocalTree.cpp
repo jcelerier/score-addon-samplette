@@ -2,20 +2,20 @@
 
 #include <LocalTree/Property.hpp>
 
-#include <MyProcess/Process.hpp>
+#include <Samplette/Process.hpp>
 
-namespace MyProcess
+namespace Samplette
 {
 LocalTreeProcessComponent::LocalTreeProcessComponent(
     ossia::net::node_base& parent,
-    MyProcess::Model& proc,
+    Samplette::Model& proc,
     const score::DocumentContext& sys,
     QObject* parent_obj)
-    : LocalTree::ProcessComponent_T<MyProcess::Model>{
+    : LocalTree::ProcessComponent_T<Samplette::Model>{
         parent,
         proc,
         sys,
-        "MyProcessComponent",
+        "SampletteComponent",
         parent_obj}
 {
 }

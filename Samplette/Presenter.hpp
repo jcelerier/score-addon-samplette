@@ -5,7 +5,7 @@
 
 #include <score/model/Identifier.hpp>
 
-namespace MyProcess
+namespace Samplette
 {
 class Model;
 class View;
@@ -25,6 +25,7 @@ public:
   void putBehind() override;
 
   void on_zoomRatioChanged(ZoomRatio) override;
+  void on_drop(const QMimeData*);
 
   void parentGeometryChanged() override;
 

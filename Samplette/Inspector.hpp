@@ -4,16 +4,16 @@
 
 #include <score/command/Dispatchers/CommandDispatcher.hpp>
 
-#include <MyProcess/Process.hpp>
+#include <Samplette/Process.hpp>
 
-namespace MyProcess
+namespace Samplette
 {
 class InspectorWidget final
-    : public Process::InspectorWidgetDelegate_T<MyProcess::Model>
+    : public Process::InspectorWidgetDelegate_T<Samplette::Model>
 {
 public:
   explicit InspectorWidget(
-      const MyProcess::Model& object,
+      const Samplette::Model& object,
       const score::DocumentContext& context,
       QWidget* parent);
   ~InspectorWidget() override;
@@ -25,6 +25,6 @@ private:
 class InspectorFactory final
     : public Process::InspectorWidgetDelegateFactory_T<Model, InspectorWidget>
 {
-  SCORE_CONCRETE("00000000-0000-0000-0000-000000000000")
+  SCORE_CONCRETE("39162fc6-6d17-41b7-802a-aa2c8b0d64e4")
 };
 }

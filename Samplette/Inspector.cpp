@@ -5,10 +5,10 @@
 #include <QFormLayout>
 #include <QLabel>
 
-namespace MyProcess
+namespace Samplette
 {
 InspectorWidget::InspectorWidget(
-    const MyProcess::Model& object,
+    const Samplette::Model& object,
     const score::DocumentContext& context,
     QWidget* parent)
     : InspectorWidgetDelegate_T{object, parent}

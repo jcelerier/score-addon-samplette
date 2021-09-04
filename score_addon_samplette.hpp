@@ -12,16 +12,16 @@
 #include <utility>
 #include <vector>
 
-class score_addon_my_process final
+class score_addon_samplette final
     : public score::Plugin_QtInterface
     , public score::FactoryInterface_QtInterface
     , public score::CommandFactory_QtInterface
 {
-  SCORE_PLUGIN_METADATA(1, "00000000-0000-0000-0000-000000000000")
+  SCORE_PLUGIN_METADATA(1, "4746b682-866c-4b2d-818e-2d210d1d507b")
 
 public:
-  score_addon_my_process();
-  ~score_addon_my_process() override;
+  score_addon_samplette();
+  ~score_addon_samplette() override;
 
 private:
   std::vector<std::unique_ptr<score::InterfaceBase>> factories(
