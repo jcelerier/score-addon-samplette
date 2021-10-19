@@ -420,7 +420,7 @@ public:
     process_controls();
     process_midi();
 
-    auto tick_duration = tk.physical_write_duration(s.modelToSamples());
+    const auto [first_pos, tick_duration] = s.timings(tk);
     if(tick_duration <= 0)
       return;
 

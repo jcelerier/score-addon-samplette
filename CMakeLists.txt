@@ -31,7 +31,6 @@ add_library(score_addon_samplette
 )
 
 score_generate_command_list_file(${PROJECT_NAME} "Samplette/CommandFactory.hpp")
-target_compile_options(score_addon_samplette PRIVATE -fcoroutines-ts)
 
 # Link
 target_link_libraries(score_addon_samplette PUBLIC score_plugin_engine score_plugin_media)
