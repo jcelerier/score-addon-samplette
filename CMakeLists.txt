@@ -33,7 +33,13 @@ add_library(score_addon_samplette
 score_generate_command_list_file(${PROJECT_NAME} "Samplette/CommandFactory.hpp")
 
 # Link
-target_link_libraries(score_addon_samplette PUBLIC score_plugin_engine score_plugin_media)
+target_link_libraries(score_addon_samplette
+  PRIVATE
+    score_plugin_engine
+    score_plugin_media
+    rubberband
+    samplerate
+)
 
 # Target-specific options
 setup_score_plugin(score_addon_samplette)

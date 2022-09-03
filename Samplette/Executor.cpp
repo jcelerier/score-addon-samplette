@@ -2,52 +2,45 @@
 
 #include <Process/ExecutionContext.hpp>
 
-#include <ossia/dataflow/port.hpp>
+#if !__has_include(<RubberBandStretcher.h>)
+#error ufck
+#endif
+#if !__has_include(<samplerate.h>)
+#error ufckdsdg
+#endif
+#include <ossia/dataflow/nodes/sound_ref.hpp>
 #include <ossia/dataflow/nodes/sound_utils.hpp>
+#include <ossia/dataflow/port.hpp>
+#include <ossia/detail/logger.hpp>
 
 #include <Samplette/Process.hpp>
-#include <ossia/dataflow/nodes/sound_ref.hpp>
-#include <ossia/detail/logger.hpp>
 #include <flat_map.hpp>
 
 namespace Samplette
 {
-template<typename T>
+template <typename T>
 struct deferred_value
 {
   alignas(T) char bytes[sizeof(T)];
-  deferred_value() noexcept
-  {
-
-  }
+  deferred_value() noexcept { }
 
   deferred_value(const deferred_value&) = delete;
   deferred_value(deferred_value&&) = delete;
   deferred_value& operator=(const deferred_value&) = delete;
   deferred_value& operator=(deferred_value&&) = delete;
 
-  template<typename... Args>
+  template <typename... Args>
   T& allocate(Args&&... args)
   {
     return *new (&bytes) T(std::forward<Args>(args)...);
   }
 
-  T& get() noexcept
-  {
-    return *reinterpret_cast<T*>(&bytes);
-  }
+  T& get() noexcept { return *reinterpret_cast<T*>(&bytes); }
 
-  const T& get() const noexcept
-  {
-    return *reinterpret_cast<T*>(&bytes);
-  }
+  const T& get() const noexcept { return *reinterpret_cast<T*>(&bytes); }
 
-  ~deferred_value()
-  {
-    get().~T();
-  }
+  ~deferred_value() { get().~T(); }
 };
-
 
 // Adapted from http://www.martin-finke.de/blog/articles/audio-plugins-011-envelopes/
 struct envelope_state
@@ -56,11 +49,13 @@ struct envelope_state
   bool finished{};
 };
 
-class exponential_adsr {
+class exponential_adsr
+{
 public:
   static constexpr const double min_level{0.0001};
 
-  enum Stage {
+  enum Stage
+  {
     Off,
     Attack,
     Decay,
@@ -68,8 +63,8 @@ public:
     Release
   };
 
-  [[nodiscard]]
-  static auto compute_multiplier(double start, double end, int64_t samples) noexcept
+  [[nodiscard]] static auto
+  compute_multiplier(double start, double end, int64_t samples) noexcept
   {
     using namespace std;
     return 1.0 + (std::log(end) - std::log(start)) / (samples);
@@ -93,18 +88,13 @@ public:
       case Attack:
         m_nextStageSample = m_stages[m_stage] * m_rate;
         m_level = min_level;
-        m_mult = compute_multiplier(
-              m_level,
-              1.0,
-              m_nextStageSample);
+        m_mult = compute_multiplier(m_level, 1.0, m_nextStageSample);
         break;
       case Decay:
         m_nextStageSample = m_stages[m_stage] * m_rate;
         m_level = 1.0;
         m_mult = compute_multiplier(
-              m_level,
-              fmax(m_stages[Sustain], min_level),
-              m_nextStageSample);
+            m_level, fmax(m_stages[Sustain], min_level), m_nextStageSample);
         break;
       case Sustain:
         m_nextStageSample = 0;
@@ -124,7 +114,7 @@ public:
   {
     envelope_state ret;
 
-    switch(m_stage)
+    switch (m_stage)
     {
       case Off:
         ret.value = 0.;
@@ -143,7 +133,7 @@ public:
         {
           const Stage newStage = static_cast<Stage>((m_stage + 1) % 5);
           enter_stage(newStage);
-          if(m_stage == Off)
+          if (m_stage == Off)
             ret.finished = true;
         }
         m_level *= m_mult;
@@ -169,12 +159,11 @@ public:
     if (stage == m_stage)
     {
       // Re-calculate the multiplier and nextStageSampleIndex
-      if(m_stage == Attack ||
-         m_stage == Decay ||
-         m_stage == Release)
+      if (m_stage == Attack || m_stage == Decay || m_stage == Release)
       {
         double nextLevelValue;
-        switch (m_stage) {
+        switch (m_stage)
+        {
           case Attack:
             nextLevelValue = 1.0;
             break;
@@ -193,9 +182,10 @@ public:
 
         int64_t samplesUntilNextStage = remainingStageProcess * value * m_rate;
         m_nextStageSample = m_sampleIndex + samplesUntilNextStage;
-        m_mult = compute_multiplier(m_level, nextLevelValue, samplesUntilNextStage);
+        m_mult = compute_multiplier(
+            m_level, nextLevelValue, samplesUntilNextStage);
       }
-      else if(m_stage == Sustain)
+      else if (m_stage == Sustain)
       {
         m_level = value;
       }
@@ -207,9 +197,7 @@ public:
       // Re-calculate multiplier:
       int64_t samplesUntilNextStage = m_nextStageSample - m_sampleIndex;
       m_mult = compute_multiplier(
-            m_level,
-            fmax(m_stages[Sustain], min_level),
-            samplesUntilNextStage);
+          m_level, fmax(m_stages[Sustain], min_level), samplesUntilNextStage);
     }
   }
 
@@ -226,18 +214,17 @@ private:
   double m_rate{44100};
   double m_level{min_level};
   double m_mult{1.0};
-  double m_stages[5]{ 0.0, 0.01, 0.5, 0.1, 1.0 };
+  double m_stages[5]{0.0, 0.01, 0.5, 0.1, 1.0};
   int64_t m_sampleIndex{};
   int64_t m_nextStageSample{};
   Stage m_stage{Off};
 };
 
-
-
 class node final : public ossia::nonowning_graph_node
 {
 public:
-  node() {
+  node()
+  {
     this->root_inputs().push_back(&in);
 
     this->root_inputs().push_back(&trigger_mode);
@@ -273,14 +260,15 @@ public:
     //new_voice->info.m_resampler.reset(0, ossia::audio_stretch_mode::Repitch, m_handle->data.size(), this->m_dataSampleRate);
 
     // Playback speed
-    if(m_root != 0)
+    if (m_root != 0)
     {
       // Tempo
       // m_handle at pitch m_root
       // we want: to set the resampler to put it at note's pitch
       ossia::frequency src_freq = m_root;
       ossia::frequency dst_freq = ossia::midi_pitch{note};
-      new_voice->note_speed_ratio = dst_freq.dataspace_value / src_freq.dataspace_value; // TODO /0
+      new_voice->note_speed_ratio
+          = dst_freq.dataspace_value / src_freq.dataspace_value; // TODO /0
     }
     new_voice->info.tempo = ossia::root_tempo * new_voice->note_speed_ratio;
 
@@ -289,8 +277,10 @@ public:
       // m_attack / m_decay / m_release are in seconds
       new_voice->envelope.init_stage(exponential_adsr::Attack, this->m_attack);
       new_voice->envelope.init_stage(exponential_adsr::Decay, this->m_decay);
-      new_voice->envelope.init_stage(exponential_adsr::Sustain, this->m_sustainGain);
-      new_voice->envelope.init_stage(exponential_adsr::Release, this->m_release);
+      new_voice->envelope.init_stage(
+          exponential_adsr::Sustain, this->m_sustainGain);
+      new_voice->envelope.init_stage(
+          exponential_adsr::Release, this->m_release);
 
       new_voice->envelope.enter_stage(exponential_adsr::Attack);
     }
@@ -298,14 +288,11 @@ public:
     voices[note] = std::move(new_voice);
   }
 
-  void remove_voice(int note)
-  {
-    voices.erase(note);
-  }
+  void remove_voice(int note) { voices.erase(note); }
   void start_release(int note)
   {
     auto it = voices.find(note);
-    if(it != voices.end())
+    if (it != voices.end())
     {
       it->second->envelope.enter_stage(exponential_adsr::Release);
     }
@@ -325,17 +312,19 @@ public:
   void process_midi()
   {
     // First parse the MIDI input
-    for(libremidi::message& m : in->messages) {
-      switch(m.get_message_type()) {
+    for (libremidi::message& m : in->messages)
+    {
+      switch (m.get_message_type())
+      {
         case libremidi::message_type::NOTE_ON:
-          if(this->m_polyMode == Mono)
+          if (this->m_polyMode == Mono)
           {
             voices.clear();
           }
           add_voice(m.bytes[1]);
           break;
         case libremidi::message_type::NOTE_OFF:
-          switch(this->m_triggerMode)
+          switch (this->m_triggerMode)
           {
             case Trigger:
               start_release(m.bytes[1]);
@@ -354,10 +343,11 @@ public:
     }
   }
 
-  template<typename T>
-  static bool read_control(const ossia::value_port& in, auto& out) {
+  template <typename T>
+  static bool read_control(const ossia::value_port& in, auto& out)
+  {
     auto& d = in.get_data();
-    if(!d.empty())
+    if (!d.empty())
     {
       out = ossia::convert<T>(d.back().value);
       return true;
@@ -369,13 +359,15 @@ public:
   {
     std::optional<bool> trigger_mode_v;
     read_control<bool>(*this->trigger_mode, trigger_mode_v);
-    if(trigger_mode_v) {
+    if (trigger_mode_v)
+    {
       this->m_triggerMode = *trigger_mode_v ? Trigger : Gate;
     }
     std::optional<std::string> poly_mode_v;
     read_control<std::string>(*this->poly_mode, poly_mode_v);
-    if(poly_mode_v) {
-      if(*poly_mode_v == "Mono")
+    if (poly_mode_v)
+    {
+      if (*poly_mode_v == "Mono")
         this->m_polyMode = Mono;
       else
         this->m_polyMode = Poly;
@@ -383,30 +375,31 @@ public:
 
     std::optional<int> root_v{};
     read_control<int>(*this->root, root_v);
-    if(root_v) {
+    if (root_v)
+    {
       this->m_root = *root_v;
     }
 
     read_control<float>(*this->gain, this->m_gain);
-    if(read_control<float>(*this->start, this->m_start))
+    if (read_control<float>(*this->start, this->m_start))
       this->m_start /= 100.;
 
-    if(read_control<float>(*this->length, this->m_length))
+    if (read_control<float>(*this->length, this->m_length))
       this->m_length /= 100.;
 
     read_control<bool>(*this->loops, this->m_loops);
-    if(read_control<float>(*this->loop_start, this->m_loopStart))
+    if (read_control<float>(*this->loop_start, this->m_loopStart))
       this->m_loopStart /= 100.;
 
     read_control<float>(*this->pitch, this->m_userPitchShift);
 
     // UI control is in msec, ADSR is in sec
-    if(read_control<float>(*this->attack, this->m_attack))
+    if (read_control<float>(*this->attack, this->m_attack))
       this->m_attack /= 1000.;
-    if(read_control<float>(*this->decay, this->m_decay))
+    if (read_control<float>(*this->decay, this->m_decay))
       this->m_decay /= 1000.;
     read_control<float>(*this->sustain, this->m_sustainGain);
-    if(read_control<float>(*this->release, this->m_release))
+    if (read_control<float>(*this->release, this->m_release))
       this->m_release /= 1000.;
 
     read_control<float>(*this->velocity, this->m_velocity);
@@ -421,93 +414,114 @@ public:
     process_midi();
 
     const auto [first_pos, tick_duration] = s.timings(tk);
-    if(tick_duration <= 0)
+    if (tick_duration <= 0)
       return;
 
     const auto channels = this->m_handle.get()->data.size();
     const auto len = this->m_handle.get()->data[0].size();
 
     // Play all our voices
-    for(auto it = voices.begin(); it != voices.end(); )
+    for (auto it = voices.begin(); it != voices.end();)
     {
       auto& [note, voice_ptr] = *it;
       auto& voice = *voice_ptr;
 
       // Clear prev channel output
-      voice.port.samples.resize(channels);
-      for(auto& c : voice.port.samples)
+      voice.port.set_channels(channels);
+      for (auto& c : voice.port.get())
       {
         c.clear();
         c.resize(tick_duration);
       }
 
       // Setup timing
-      voice.timing.tempo = ossia::root_tempo * voice.note_speed_ratio + m_midiPitchShift + m_userPitchShift;
+      voice.timing.tempo = ossia::root_tempo * voice.note_speed_ratio
+                           + m_midiPitchShift + m_userPitchShift;
       voice.timing.date += tick_duration;
-      if(voice.timing.tempo <= 0.000001)
+      if (voice.timing.tempo <= 0.000001)
       {
         ++it;
         continue;
       }
 
       // Execute
-      int64_t samples_to_read = s.bufferSize() * (voice.timing.tempo / ossia::root_tempo);
+      int64_t samples_to_read
+          = s.bufferSize() * (voice.timing.tempo / ossia::root_tempo);
       int64_t samples_to_write = s.bufferSize();
       int64_t samples_offset = 0;
 
       const int64_t total_samples = this->m_handle->data[0].size();
       const int64_t start_offset = total_samples * this->m_start;
-      const int64_t main_length = (total_samples - start_offset) * this->m_length;
-      const int64_t loop_start = (total_samples - start_offset) * this->m_loopStart;
+      const int64_t main_length
+          = (total_samples - start_offset) * this->m_length;
+      const int64_t loop_start
+          = (total_samples - start_offset) * this->m_loopStart;
 
       //int loop_duration = this->m_handle->data[0].size();
 
       ossia::mutable_audio_span<double> output = voice.port;
-      struct {
-       ossia::audio_span<float>& m_data;
+      struct
+      {
+        ossia::audio_span<float>& m_data;
         const int64_t& start_offset;
         const int64_t& loop_duration;
         node& n;
-        void fetch_audio (
-              const int64_t start,
-              const int64_t samples_to_write,
-              float** const audio_array)  {
-          ossia::read_audio_from_buffer(m_data, start, samples_to_write, start_offset, loop_duration, n.m_loops, audio_array);
+        void fetch_audio(
+            const int64_t start,
+            const int64_t samples_to_write,
+            float** const audio_array)
+        {
+          ossia::read_audio_from_buffer(
+              m_data,
+              start,
+              samples_to_write,
+              start_offset,
+              loop_duration,
+              n.m_loops,
+              audio_array);
         }
       } fetcher{m_data, start_offset, main_length, *this};
 
-      voice.pitcher.get().run(fetcher,
-            voice.timing,
-            s,
-            ossia::root_tempo / voice.timing.tempo,
-            channels, len, samples_to_read, samples_to_write, samples_offset, output);
+      voice.pitcher.get().run(
+          fetcher,
+          voice.timing,
+          s,
+          ossia::root_tempo / voice.timing.tempo,
+          channels,
+          len,
+          samples_to_read,
+          samples_to_write,
+          samples_offset,
+          output);
       voice.timing.prev_date = voice.timing.date;
 
       // Copy samples to output
-      this->out->samples.resize(std::max(this->out->samples.size(), voice.port.samples.size()));
-      auto& voice_samples = voice.port.samples;
-      auto& out_samples = this->out->samples;
+      this->out->set_channels(
+          std::max(this->out->channels(), voice.port.channels()));
+      auto& voice_samples = voice.port.get();
+      auto& out_samples = this->out->get();
 
       // Make sure we have enough space
       const std::size_t channels = voice_samples.size();
       const std::size_t num_samples = voice_samples[0].size();
-      for(std::size_t channel = 0; channel < channels; channel++) {
-        out_samples.resize(std::max(out_samples.size(), voice_samples.size()));
+      for (std::size_t channel = 0; channel < channels; channel++)
+      {
         auto& out_channel = out_samples[channel];
         out_samples[channel].resize(std::max(out_channel.size(), num_samples));
       }
 
       // Apply envelope, gain... while copying the output
       envelope_state env;
-      for(std::size_t i = 0; i < num_samples; i++)
+      for (std::size_t i = 0; i < num_samples; i++)
       {
         env = voice.envelope.next_sample();
 
-        if(env.finished)
+        if (env.finished)
           break;
 
         env.value *= this->m_gain;
-        for(std::size_t channel = 0; channel < channels; channel++) {
+        for (std::size_t channel = 0; channel < channels; channel++)
+        {
           auto& out_channel = out_samples[channel];
           const auto& voice_channel = voice_samples[channel];
 
@@ -515,7 +529,7 @@ public:
         }
       }
 
-      if(env.finished)
+      if (env.finished)
         it = voices.erase(it);
       else
         ++it;
@@ -550,7 +564,8 @@ public:
 
   ossia::audio_outlet out;
 
-  struct voice {
+  struct voice
+  {
     ossia::sound_processing_info info;
     ossia::audio_port port;
     deferred_value<ossia::repitch_stretcher> pitcher;
@@ -568,8 +583,16 @@ public:
   std::size_t m_dataSampleRate{};
   ossia::audio_handle m_handle{};
 
-  enum { Trigger, Gate } m_triggerMode{};
-  enum { Mono, Poly } m_polyMode{};
+  enum
+  {
+    Trigger,
+    Gate
+  } m_triggerMode{};
+  enum
+  {
+    Mono,
+    Poly
+  } m_polyMode{};
 
   ossia::midi_pitch m_root{60};
 
@@ -604,55 +627,83 @@ ProcessExecutorComponent::ProcessExecutorComponent(
   auto n = std::make_shared<Samplette::node>();
 
   SCORE_ASSERT(element.file()->finishedDecoding());
-  auto file = element.file()->unsafe_handle().target<std::shared_ptr<Media::AudioFile::LibavReader>>();
+  auto file = element.file()
+                  ->unsafe_handle()
+                  .target<std::shared_ptr<Media::AudioFile::LibavReader>>();
   SCORE_ASSERT(file);
   auto& snd = *file;
   SCORE_ASSERT(snd);
 
-  n->set_sound(snd->handle, snd->decoder.channels, snd->decoder.fileSampleRate);
+  n->set_sound(
+      snd->handle, snd->decoder.channels, snd->decoder.fileSampleRate);
   this->node = n;
   m_ossia_process = std::make_shared<ossia::node_process>(n);
 
-#define map_func(model, exec, T, func) \
-  n->exec = func(ossia::convert<T>(element.model->value())); \
-  connect(element.model.get(), &Process::ControlInlet::valueChanged, this, [this, n] (const ossia::value& v) { \
-    in_exec([val = func(ossia::convert<T>(v)), n] { n->exec = val; }); \
-  });
+#define map_func(model, exec, T, func)                                     \
+  n->exec = func(ossia::convert<T>(element.model->value()));               \
+  connect(                                                                 \
+      element.model.get(),                                                 \
+      &Process::ControlInlet::valueChanged,                                \
+      this,                                                                \
+      [this, n](const ossia::value& v) {                                   \
+        in_exec([val = func(ossia::convert<T>(v)), n] { n->exec = val; }); \
+      });
 
-  map_func(trigger_mode, m_triggerMode, bool, [] (bool t) { return t ? node::Gate : node::Trigger; });
-  map_func(poly_mode, m_polyMode, std::string, [] (const std::string& t) { return t == "Mono" ? node::Mono : node::Poly; });
-  map_func(root, m_root, int, [] (int t) { return t; });
+  map_func(
+      trigger_mode,
+      m_triggerMode,
+      bool,
+      [](bool t) { return t ? node::Gate : node::Trigger; });
+  map_func(
+      poly_mode,
+      m_polyMode,
+      std::string,
+      [](const std::string& t)
+      { return t == "Mono" ? node::Mono : node::Poly; });
+  map_func(root, m_root, int, [](int t) { return t; });
 
-  map_func(gain, m_gain, float, [] (float t) { return t; });
+  map_func(gain, m_gain, float, [](float t) { return t; });
 
-  map_func(start, m_start, float, [] (float t) { return t / 100.; });
-  map_func(length, m_length, float, [] (float t) { return t / 100.; });
+  map_func(start, m_start, float, [](float t) { return t / 100.; });
+  map_func(length, m_length, float, [](float t) { return t / 100.; });
 
-  map_func(loops, m_loops, bool, [] (bool t) { return t; });
-  map_func(loop_start, m_loopStart, float, [] (float t) { return t / 100.; });
+  map_func(loops, m_loops, bool, [](bool t) { return t; });
+  map_func(loop_start, m_loopStart, float, [](float t) { return t / 100.; });
 
-  map_func(pitch, m_userPitchShift, float, [] (float t) { return t; });
+  map_func(pitch, m_userPitchShift, float, [](float t) { return t; });
 
-  map_func(attack, m_attack, float, [] (float t) { return t / 1000.; });
-  map_func(decay, m_decay, float, [] (float t) { return t / 1000.; });
-  map_func(sustain, m_sustainGain, float, [] (float t) { return t; });
-  map_func(release, m_release, float, [] (float t) { return t / 1000.; });
+  map_func(attack, m_attack, float, [](float t) { return t / 1000.; });
+  map_func(decay, m_decay, float, [](float t) { return t / 1000.; });
+  map_func(sustain, m_sustainGain, float, [](float t) { return t; });
+  map_func(release, m_release, float, [](float t) { return t / 1000.; });
 
-  map_func(velocity, m_velocity, float, [] (float t) { return t / 100.; });
+  map_func(velocity, m_velocity, float, [](float t) { return t / 100.; });
 
-  map_func(fade, m_fade, float, [] (float t) { return t / 100.; });
+  map_func(fade, m_fade, float, [](float t) { return t / 100.; });
 
 #undef map_func
-  connect(&element, &Samplette::Model::fileChanged, this, [&, n] {\
-    auto file = element.file()->unsafe_handle().target<std::shared_ptr<Media::AudioFile::LibavReader>>();
-    SCORE_ASSERT(file);
+  connect(
+      &element,
+      &Samplette::Model::fileChanged,
+      this,
+      [&, n]
+      {
+        auto file
+            = element.file()
+                  ->unsafe_handle()
+                  .target<std::shared_ptr<Media::AudioFile::LibavReader>>();
+        SCORE_ASSERT(file);
 
-    in_exec([=] {
+        in_exec(
+            [=]
+            {
               auto& snd = *file;
               SCORE_ASSERT(snd);
-              n->set_sound(snd->handle, snd->decoder.channels, snd->decoder.fileSampleRate);
-    });
-  });
-
+              n->set_sound(
+                  snd->handle,
+                  snd->decoder.channels,
+                  snd->decoder.fileSampleRate);
+            });
+      });
 }
 }
